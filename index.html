@@ -2,7 +2,7 @@
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>🐘 ELEPHANT PENALTI</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -259,7 +259,7 @@
     display: none;
     justify-content: space-between;
     align-items: flex-end;
-    padding: 0 18px 22px;
+    padding: 0 18px calc(42px + env(safe-area-inset-bottom, 0px));
     z-index: 15;
     pointer-events: none;
   }
