@@ -495,27 +495,90 @@
   let lastScore = 0; // score of the finished game (for sharing)
   const SHARE_URL = 'https://elephant-penalti.com';
 
-  function shareResult() {
+  const shareMascot = new Image();
+  shareMascot.src = 'mascotte_trim.png';
+
+  function fitFont(x, text, maxW, startPx) {
+    let s = startPx;
+    x.font = '900 ' + s + 'px "Trebuchet MS", Arial, sans-serif';
+    while (x.measureText(text).width > maxW && s > 12) {
+      s -= 4; x.font = '900 ' + s + 'px "Trebuchet MS", Arial, sans-serif';
+    }
+    return s;
+  }
+
+  function buildResultImage(n) {
+    return new Promise((resolve, reject) => {
+      try {
+        const S = 1080;
+        const c = document.createElement('canvas');
+        c.width = S; c.height = S;
+        const x = c.getContext('2d');
+        const g = x.createLinearGradient(0, 0, 0, S);
+        g.addColorStop(0, '#ff5aaa'); g.addColorStop(1, '#cd1464');
+        x.fillStyle = g; x.fillRect(0, 0, S, S);
+        x.textAlign = 'center';
+        const draw = () => {
+          if (shareMascot.complete && shareMascot.naturalWidth) {
+            const mh = 470, mw = mh * (shareMascot.naturalWidth / shareMascot.naturalHeight);
+            x.drawImage(shareMascot, S / 2 - mw / 2, S - mh - 56, mw, mh);
+          }
+          x.fillStyle = '#fff';
+          fitFont(x, 'ELEPHANT PENALTI', S - 130, 96);
+          x.fillText('ELEPHANT PENALTI', S / 2, 120);
+          x.font = '900 270px "Trebuchet MS", Arial, sans-serif';
+          x.fillText(String(n), S / 2, 380);
+          x.font = '900 92px "Trebuchet MS", Arial, sans-serif';
+          x.fillText(n > 1 ? 'GOLOS' : 'GOLO', S / 2, 478);
+          x.font = '700 40px "Trebuchet MS", Arial, sans-serif';
+          x.fillText('elephant-penalti.com', S / 2, S - 22);
+          c.toBlob(b => b ? resolve(b) : reject(new Error('no blob')), 'image/png');
+        };
+        if (shareMascot.complete) draw();
+        else { shareMascot.onload = draw; shareMascot.onerror = draw; }
+      } catch (e) { reject(e); }
+    });
+  }
+
+  async function shareResult() {
     const n = lastScore;
     const unit = n > 1 ? 'golos' : 'golo';
-    const text = 'Marquei ' + n + ' ' + unit + ' no Elephant Penalti! 🐘⚽ Consegues fazer melhor?';
+    const msg = 'Marquei ' + n + ' ' + unit + ' no Elephant Penalti! 🐘⚽ Consegues fazer melhor?';
+    const full = msg + ' ' + SHARE_URL;
+    const btn = document.getElementById('shareBtn');
+    const flash = (m) => {
+      const old = btn.textContent; btn.textContent = m; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = old; btn.classList.remove('copied'); }, 2000);
+    };
+    let blob = null;
+    try { blob = await buildResultImage(n); } catch (e) {}
+
+    // 1) Share the generated IMAGE (mobile) — appears as a photo in WhatsApp/Insta/…
+    if (blob && navigator.canShare) {
+      const file = new File([blob], 'elephant-penalti.png', { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], text: full }); return; } catch (e) { return; }
+      }
+    }
+    // 2) Web Share with link (image comes from the link preview)
     if (navigator.share) {
-      navigator.share({ title: 'Elephant Penalti', text: text, url: SHARE_URL }).catch(() => {});
+      try { await navigator.share({ title: 'Elephant Penalti', text: msg, url: SHARE_URL }); return; } catch (e) { return; }
+    }
+    // 3) Desktop: download the image + copy the message
+    if (blob) {
+      const u = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = u; a.download = 'elephant-penalti.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(u), 5000);
+      if (navigator.clipboard) navigator.clipboard.writeText(full).catch(() => {});
+      flash('✓ Imagem descarregada!');
       return;
     }
-    const full = text + ' ' + SHARE_URL;
-    const btn = document.getElementById('shareBtn');
-    const flash = (msg) => {
-      const old = btn.textContent;
-      btn.textContent = msg;
-      btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = old; btn.classList.remove('copied'); }, 1900);
-    };
+    // 4) Last resort: copy text
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(full).then(() => flash('✓ Copiado!')).catch(() => window.prompt('Copia o link:', full));
-    } else {
-      window.prompt('Copia o link:', full);
-    }
+      navigator.clipboard.writeText(full).then(() => flash('✓ Copiado!')).catch(() => window.prompt('Copia:', full));
+    } else { window.prompt('Copia:', full); }
   }
 
   function escapeHtml(s) {
