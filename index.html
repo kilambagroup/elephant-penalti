@@ -553,10 +553,10 @@
           x.fillStyle = '#fff';
           fitFont(x, 'ELEPHANT', maxW, 116); x.fillText('ELEPHANT', cx, 130);
           fitFont(x, 'PENALTI', maxW, 116); x.fillText('PENALTI', cx, 240);
-          x.font = '900 200px "Trebuchet MS", Arial, sans-serif';
-          x.fillText(String(n), cx, 450);
-          x.font = '900 72px "Trebuchet MS", Arial, sans-serif';
-          x.fillText(n > 1 ? 'GOLOS' : 'GOLO', cx, 525);
+          x.font = '900 210px "Arial Black", "Arial", sans-serif';
+          x.fillText(String(n), cx, 452);
+          x.font = '900 78px "Arial Black", "Arial", sans-serif';
+          x.fillText(n > 1 ? 'GOLOS' : 'GOLO', cx, 527);
           x.font = '700 34px "Trebuchet MS", Arial, sans-serif';
           x.fillText('elephant-penalti.com', cx, 595);
           c.toBlob(b => b ? resolve(b) : reject(new Error('no blob')), 'image/png');
