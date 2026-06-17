@@ -510,28 +510,32 @@
   function buildResultImage(n) {
     return new Promise((resolve, reject) => {
       try {
-        const S = 1080;
+        const W = 1200, H = 630;
         const c = document.createElement('canvas');
-        c.width = S; c.height = S;
+        c.width = W; c.height = H;
         const x = c.getContext('2d');
-        const g = x.createLinearGradient(0, 0, 0, S);
+        const g = x.createLinearGradient(0, 0, 0, H);
         g.addColorStop(0, '#ff5aaa'); g.addColorStop(1, '#cd1464');
-        x.fillStyle = g; x.fillRect(0, 0, S, S);
-        x.textAlign = 'center';
+        x.fillStyle = g; x.fillRect(0, 0, W, H);
         const draw = () => {
+          let rightLeft = 470; // left edge of the text column
           if (shareMascot.complete && shareMascot.naturalWidth) {
-            const mh = 470, mw = mh * (shareMascot.naturalWidth / shareMascot.naturalHeight);
-            x.drawImage(shareMascot, S / 2 - mw / 2, S - mh - 56, mw, mh);
+            const mh = H, mw = mh * (shareMascot.naturalWidth / shareMascot.naturalHeight);
+            x.drawImage(shareMascot, 6, 0, mw, mh);
+            rightLeft = mw + 24;
           }
+          const cx = (rightLeft + W) / 2; // center of the right text column
+          const maxW = W - rightLeft - 50;
+          x.textAlign = 'center';
           x.fillStyle = '#fff';
-          fitFont(x, 'ELEPHANT PENALTI', S - 130, 96);
-          x.fillText('ELEPHANT PENALTI', S / 2, 120);
-          x.font = '900 270px "Trebuchet MS", Arial, sans-serif';
-          x.fillText(String(n), S / 2, 380);
-          x.font = '900 92px "Trebuchet MS", Arial, sans-serif';
-          x.fillText(n > 1 ? 'GOLOS' : 'GOLO', S / 2, 478);
-          x.font = '700 40px "Trebuchet MS", Arial, sans-serif';
-          x.fillText('elephant-penalti.com', S / 2, S - 22);
+          fitFont(x, 'ELEPHANT', maxW, 116); x.fillText('ELEPHANT', cx, 130);
+          fitFont(x, 'PENALTI', maxW, 116); x.fillText('PENALTI', cx, 240);
+          x.font = '900 200px "Trebuchet MS", Arial, sans-serif';
+          x.fillText(String(n), cx, 450);
+          x.font = '900 72px "Trebuchet MS", Arial, sans-serif';
+          x.fillText(n > 1 ? 'GOLOS' : 'GOLO', cx, 525);
+          x.font = '700 34px "Trebuchet MS", Arial, sans-serif';
+          x.fillText('elephant-penalti.com', cx, 595);
           c.toBlob(b => b ? resolve(b) : reject(new Error('no blob')), 'image/png');
         };
         if (shareMascot.complete) draw();
