@@ -89,6 +89,9 @@
     align-items: center;
     justify-content: center;
     text-align: center;
+    overflow-y: auto;
+    touch-action: pan-y; /* allow finger-scroll on menus (body blocks it during play) */
+    -webkit-overflow-scrolling: touch;
     background: rgba(20, 8, 40, 0.82);
     backdrop-filter: blur(8px);
     z-index: 20;
