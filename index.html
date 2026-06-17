@@ -142,8 +142,13 @@
   #endScreen .title { font-size: clamp(28px, 8vw, 54px); margin-bottom: 4px; }
   #finalScore { font-size: clamp(18px,5vw,28px); }
   #leaderboard { margin-bottom: 16px; }
+  /* The list flexes to fill the space; the buttons (non-shrinking) stay pinned
+     and always visible — no full-screen scroll needed. */
+  #endScreen > *, #rankingScreen > * { flex-shrink: 0; }
   #leaderboard, #rankingBoard {
-    max-height: 46vh;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 56vh;
     overflow-y: auto;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
