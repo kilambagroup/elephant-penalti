@@ -33,7 +33,6 @@
     background: #2a0418;
     user-select: none;
     -webkit-user-select: none;
-    touch-action: none;
   }
   #game {
     position: relative;
@@ -47,6 +46,7 @@
   canvas {
     display: block;
     background: #2d8a4e;
+    touch-action: none;
     box-shadow: 0 0 70px rgba(255, 90, 160, 0.45);
     max-width: 100%;
     max-height: 100%;
@@ -170,6 +170,7 @@
     margin-bottom: -120px; /* let the title overlap the lower body */
     position: relative;
     z-index: 0;
+    pointer-events: none; /* decorative — let touches pass through to scroll */
     /* fade the lower body out so it blends behind the title text */
     -webkit-mask-image: linear-gradient(to bottom, #000 32%, transparent 58%);
     mask-image: linear-gradient(to bottom, #000 32%, transparent 58%);
