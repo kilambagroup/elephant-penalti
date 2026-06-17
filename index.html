@@ -421,8 +421,8 @@
   }
 
   function startGame() {
-    // If a Top-10 score is still awaiting a name, persist it before leaving
-    if (pendingScore != null) saveName();
+    // If a score is still awaiting a name, submit it before leaving
+    if (pendingScore != null) flushPending();
     state = 'playing';
     score = 0;
     timeLeft = GAME_TIME;
@@ -438,28 +438,45 @@
   }
 
   const MAX_BOARD = 10;
-  let pendingScore = null; // score awaiting a name when it reaches the Top 10
+  // Shared online leaderboard (Google Sheet via Apps Script web app)
+  const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxl6qY2oIRviM6xHugejpdUM-3r2UQBCYmUZh69PrxzNLJEvgeD3PNzO-bH1kFDUEOe/exec';
+  let pendingScore = null; // score awaiting a first-time name
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  function loadBoard() {
+  // --- Local cache (fallback when offline) ---
+  function cacheBoard(rows) {
+    try { localStorage.setItem('elephantBoard', JSON.stringify(rows.map(b => ({ name: b.name, score: b.score })))); } catch (e) {}
+  }
+  function cachedBoard() {
     let raw = [];
     try { raw = JSON.parse(localStorage.getItem('elephantBoard') || '[]'); } catch (e) { raw = []; }
-    return raw
-      .filter(b => b && typeof b.score === 'number')
+    return raw.filter(b => b && typeof b.score === 'number')
       .map(b => ({ name: (b.name || '').toString(), score: b.score }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, MAX_BOARD);
+      .sort((a, b) => b.score - a.score).slice(0, MAX_BOARD);
   }
 
-  function saveBoard(board) {
-    localStorage.setItem('elephantBoard',
-      JSON.stringify(board.slice(0, MAX_BOARD).map(b => ({ name: b.name, score: b.score }))));
+  // --- Online leaderboard I/O ---
+  async function fetchBoard() {
+    const res = await fetch(SHEET_URL + '?mode=top&_=' + Date.now(), { cache: 'no-store' });
+    const data = await res.json();
+    const rows = (Array.isArray(data) ? data : [])
+      .filter(b => b && typeof b.score === 'number')
+      .map(b => ({ name: String(b.name || ''), score: b.score }))
+      .sort((a, b) => b.score - a.score).slice(0, MAX_BOARD);
+    cacheBoard(rows);
+    return rows;
+  }
+  function submitScore(name, sc) {
+    const u = SHEET_URL + '?mode=add&name=' + encodeURIComponent(name) +
+      '&score=' + encodeURIComponent(sc) + '&_=' + Date.now();
+    return fetch(u, { cache: 'no-store' }).catch(() => {});
   }
 
+  // --- Rendering ---
   function boardHtml(rows) {
     const medals = ['🥇', '🥈', '🥉'];
     let html = '<div class="lb-title">🏆 Melhores pontuações</div>';
@@ -481,75 +498,88 @@
     }
     return html;
   }
-
-  function renderBoard(rows) {
-    document.getElementById('leaderboard').innerHTML = boardHtml(rows);
+  function setBoardLoading(elId) {
+    document.getElementById(elId).innerHTML =
+      '<div class="lb-title">🏆 Melhores pontuações</div><div class="lb-empty">A carregar…</div>';
+  }
+  function markAndRender(elId, rows, hlName, hlScore) {
+    let flagged = false;
+    const out = rows.map(b => {
+      const isNew = !flagged && hlName != null && b.name === hlName && b.score === hlScore;
+      if (isNew) flagged = true;
+      return { name: b.name, score: b.score, isNew: isNew };
+    });
+    document.getElementById(elId).innerHTML = boardHtml(out);
+  }
+  async function refreshBoard(elId, hlName, hlScore) {
+    setBoardLoading(elId);
+    let rows;
+    try { rows = await fetchBoard(); } catch (e) { rows = cachedBoard(); }
+    markAndRender(elId, rows, hlName, hlScore);
   }
 
-  function showRanking() {
-    const rows = loadBoard().map(b => ({ name: b.name, score: b.score, isNew: false }));
-    document.getElementById('rankingBoard').innerHTML = boardHtml(rows);
+  // --- Screens ---
+  async function showRanking() {
     document.getElementById('startScreen').classList.add('hidden');
     document.getElementById('rankingScreen').classList.remove('hidden');
+    await refreshBoard('rankingBoard', null, null);
   }
-
   function hideRanking() {
     document.getElementById('rankingScreen').classList.add('hidden');
     document.getElementById('startScreen').classList.remove('hidden');
   }
 
-  function withEntry(board, entry) {
-    const rows = board.map(b => ({ name: b.name, score: b.score, isNew: false }));
-    rows.push(entry);
-    rows.sort((a, b) => b.score - a.score);
-    return rows.slice(0, MAX_BOARD);
+  async function submitAndRefresh(name, sc) {
+    setBoardLoading('leaderboard');
+    await submitScore(name, sc);
+    await refreshBoard('leaderboard', name, sc);
   }
 
   function endGame() {
     state = 'over';
     document.getElementById('finalScore').textContent =
       score + (score > 1 ? ' golos' : ' golo');
-
-    const board = loadBoard();
-    const qualifies = score > 0 &&
-      (board.length < MAX_BOARD || score > board[board.length - 1].score);
     const nameEntry = document.getElementById('nameEntry');
+    const storedName = (localStorage.getItem('elephantName') || '').trim();
+    document.getElementById('endScreen').classList.remove('hidden');
 
-    if (qualifies) {
+    if (score > 0 && !storedName) {
+      // First time on the board: ask the player's name
       pendingScore = score;
-      renderBoard(withEntry(board, { name: '', score: score, isNew: true }));
       nameEntry.classList.remove('hidden');
       const input = document.getElementById('nameInput');
       input.value = '';
       setTimeout(() => { try { input.focus(); } catch (e) {} }, 60);
-    } else {
+      refreshBoard('leaderboard', null, null);
+    } else if (score > 0 && storedName) {
+      // Returning player: submit automatically under the saved name
       pendingScore = null;
       nameEntry.classList.add('hidden');
-      renderBoard(board.map(b => ({ name: b.name, score: b.score, isNew: false })));
+      submitAndRefresh(storedName, score);
+    } else {
+      // No goals: just show the global board
+      pendingScore = null;
+      nameEntry.classList.add('hidden');
+      refreshBoard('leaderboard', null, null);
     }
-    document.getElementById('endScreen').classList.remove('hidden');
   }
 
   function saveName() {
     if (pendingScore == null) return;
     let name = (document.getElementById('nameInput').value || '').trim().slice(0, 12);
     if (!name) name = 'Anónimo';
-
-    let board = loadBoard();
-    board.push({ name: name, score: pendingScore });
-    board.sort((a, b) => b.score - a.score);
-    board = board.slice(0, MAX_BOARD);
-    saveBoard(board);
-
-    // Highlight the entry we just saved (first match by name + score)
-    let flagged = false;
-    const rows = board.map(b => {
-      const isNew = !flagged && b.name === name && b.score === pendingScore;
-      if (isNew) flagged = true;
-      return { name: b.name, score: b.score, isNew: isNew };
-    });
-    renderBoard(rows);
+    localStorage.setItem('elephantName', name); // remember for next games
+    const sc = pendingScore;
+    pendingScore = null;
     document.getElementById('nameEntry').classList.add('hidden');
+    submitAndRefresh(name, sc);
+  }
+
+  // Submit a still-pending score (player left without confirming a name)
+  function flushPending() {
+    if (pendingScore == null) return;
+    const name = ((document.getElementById('nameInput').value || '').trim().slice(0, 12)) || 'Anónimo';
+    submitScore(name, pendingScore);
     pendingScore = null;
   }
 
