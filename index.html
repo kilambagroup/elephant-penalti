@@ -133,7 +133,8 @@
   .btn.btn-share.copied { background-color: rgba(99,217,160,0.25); border-color: #6bdf9f; }
   #startScreen .btn-secondary { position: relative; z-index: 1; }
 
-  /* Ranking + End screens: anchor to top + scroll so the full Top 10 is visible. */
+  /* Ranking + End screens: top-anchored. The score LIST scrolls inside its own
+     box (capped height) so the buttons below stay visible without scrolling. */
   #rankingScreen { justify-content: flex-start; overflow-y: auto; padding-top: 18px; padding-bottom: 18px; }
   #rankingScreen .title { font-size: clamp(28px, 8vw, 54px); margin-bottom: 14px; }
   #rankingBoard { width: min(340px, 82vw); margin-bottom: 16px; }
@@ -141,6 +142,12 @@
   #endScreen .title { font-size: clamp(28px, 8vw, 54px); margin-bottom: 4px; }
   #finalScore { font-size: clamp(18px,5vw,28px); }
   #leaderboard { margin-bottom: 16px; }
+  #leaderboard, #rankingBoard {
+    max-height: 46vh;
+    overflow-y: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
 
   /* Start screen: center the whole block, nudged a bit upward. */
   #startScreen { justify-content: flex-start; overflow-y: auto; padding-top: 0; }
