@@ -114,6 +114,20 @@
   }
   .btn.btn-secondary:hover { opacity: 1; color: #d9c9ff; }
   .btn.btn-secondary:active { transform: translateY(1px); box-shadow: none; }
+  .btn.btn-share {
+    margin-top: 12px;
+    padding: 13px 34px;
+    font-size: clamp(15px, 4vw, 20px);
+    color: #fff;
+    background-image: none;
+    background-color: rgba(255,255,255,0.12);
+    border: 2px solid rgba(255,255,255,0.45);
+    box-shadow: none;
+    text-transform: none;
+    letter-spacing: 0.3px;
+  }
+  .btn.btn-share:active { transform: translateY(2px); box-shadow: none; }
+  .btn.btn-share.copied { background-color: rgba(99,217,160,0.25); border-color: #6bdf9f; }
   #startScreen .btn-secondary { position: relative; z-index: 1; }
 
   /* Ranking + End screens: anchor to top + scroll so the full Top 10 is visible. */
@@ -350,6 +364,7 @@
     </div>
     <div id="leaderboard"></div>
     <button class="btn" id="replayBtn">Jogar de novo 🔄</button>
+    <button class="btn btn-share" id="shareBtn">📲 Partilhar resultado</button>
   </div>
 
   <!-- Touch controls -->
@@ -461,6 +476,31 @@
   // Shared online leaderboard (Google Sheet via Apps Script web app)
   const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxl6qY2oIRviM6xHugejpdUM-3r2UQBCYmUZh69PrxzNLJEvgeD3PNzO-bH1kFDUEOe/exec';
   let pendingScore = null; // score awaiting a first-time name
+  let lastScore = 0; // score of the finished game (for sharing)
+  const SHARE_URL = 'https://elephant-penalti.com';
+
+  function shareResult() {
+    const n = lastScore;
+    const unit = n > 1 ? 'golos' : 'golo';
+    const text = 'Marquei ' + n + ' ' + unit + ' no Elephant Penalti! 🐘⚽ Consegues fazer melhor?';
+    if (navigator.share) {
+      navigator.share({ title: 'Elephant Penalti', text: text, url: SHARE_URL }).catch(() => {});
+      return;
+    }
+    const full = text + ' ' + SHARE_URL;
+    const btn = document.getElementById('shareBtn');
+    const flash = (msg) => {
+      const old = btn.textContent;
+      btn.textContent = msg;
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = old; btn.classList.remove('copied'); }, 1900);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(full).then(() => flash('✓ Copiado!')).catch(() => window.prompt('Copia o link:', full));
+    } else {
+      window.prompt('Copia o link:', full);
+    }
+  }
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c =>
@@ -557,6 +597,7 @@
 
   function endGame() {
     state = 'over';
+    lastScore = score;
     document.getElementById('finalScore').textContent =
       score + (score > 1 ? ' golos' : ' golo');
     const nameEntry = document.getElementById('nameEntry');
@@ -860,6 +901,7 @@
   document.getElementById('replayBtn').addEventListener('click', startGame);
   document.getElementById('rankingBtn').addEventListener('click', showRanking);
   document.getElementById('rankingBackBtn').addEventListener('click', hideRanking);
+  document.getElementById('shareBtn').addEventListener('click', shareResult);
 
   // Name entry (Top 10)
   document.getElementById('saveNameBtn').addEventListener('click', saveName);
